@@ -1,0 +1,10 @@
+# Python
+__pycache__/
+*.pyc
+*.csv
+venv/
+# Modelos grandes (se descargan solos)
+models/*.task
+# OS
+.DS_Store
+Thumbs.db

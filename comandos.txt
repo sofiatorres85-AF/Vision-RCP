@@ -1,0 +1,6 @@
+iniciar venv 
+venv\Scripts\activate.bat
+finalizar
+deactivate
+iniciar app
+python app_rcp_aruco_pose.py
