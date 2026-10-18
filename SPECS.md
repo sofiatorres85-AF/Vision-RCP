@@ -1,69 +1,95 @@
-# SPECS — Sistema de análisis de técnica RCP con OpenCV + MediaPipe + ArUco
+# SPECS — Sistema de análisis de técnica RCP
 
-## 1. Objetivo
-Evaluar en tiempo real la técnica de RCP desde cámara web convencional,
-con superposición de landmarks e indicadores de calidad.
+OpenCV + MediaPipe Pose + ArUco + Tkinter.
 
-## 2. Requisitos funcionales (pliego)
+## 1. Requisitos funcionales y no funcionales
 
-| ID | Requisito | Implementación | Archivo |
-|----|-----------|----------------|---------|
-| RF-01 | Capturar video webcam en tiempo real ≥15 fps y mostrarlo en GUI | `cv2.VideoCapture(0, CAP_DSHOW)` + loop `after(15)` (~60 fps) / versión CV2 `waitKey(1)` | `app_rcp_aruco_pose.py:start`, `_update` / `app_rcp_cv2.py` |
-| RF-02 | Detectar landmarks MediaPipe Pose: hombros 11-12, codos 13-14, muñecas 15-16, caderas 23-24 | Tasks API `PoseLandmarker` VIDEO, `res.pose_landmarks[0]` | `app_rcp_aruco_pose.py:_update` (sección 2), `POSE_LINES` |
-| RF-03 | Calcular frecuencia (cpm) por movimiento cíclico hombros/muñecas | `CompressionCounter`: detector de valles alto→fondo→alto, `frec = 60/media(intervalos)` | `app_rcp_aruco_pose.py:CompressionCounter` |
-| RF-04 | Estimar profundidad (cm) por desplazamiento vertical muñecas | `y_cm=(y_smooth-baseline)/px_por_cm`, escala por ArUco `px_por_cm=lado_px/tamaño_cm` | `_update` sección 4 |
-| RF-05 | Verificar manos sobre centro del tórax (esternón) | a) dist. entre muñecas 15-16 <12 cm (manos juntas), b) punto medio muñecas vs punto medio hombros en X y vs ArUco | `_update` + `feedback()` |
-| RF-06 | Verificar retorno completo del tórax (descompresión) | Elevación hombros: `shoulder_mid_y` debe volver a línea base ±1.0 cm tras cada valle | `recoil_ok()` / `_update` |
-| RF-07 | Ángulo hombro-codo-muñeca (brazos extendidos) | `angle()` ABC, promedio ambos brazos, umbral ≥150° | `angle()` + `feedback()` |
-| RF-08 | Mostrar en vivo frecuencia, profundidad e indicadores de error | Labels Tk + texto OpenCV: "Presione más hondo", "Aumente la frecuencia", etc. | `_build_ui`, `feedback()` |
-| RF-09 | Ventana con video + landmarks + indicadores de calidad | Dibujo manual cv2 + panel métricas + mini-gráfica señal | `_draw_landmarks`, `_draw_signal` |
+| ID | Requisito | Tipo | Prioridad MoSCoW | RN | Artefacto de diseño | Módulo o componente | Caso de prueba / Criterio de aceptación |
+|----|-----------|------|------------------|----|---------------------|--------------------|------------------------------------------|
+| RF-01 | Captura de video en tiempo real | Funcional | M | — | HU-01 | `rcp/captura.py`, OpenCV, Tkinter | CP-01 / CA-01: la cámara se activa en menos de 3 s y el video se muestra a mínimo 15 fps. Sin cámara conectada se muestra error y la sesión no inicia. |
+| RF-02 | Detección de landmarks corporales | Funcional | M | — | HU-01, HU-02 | `rcp/procesamiento.py`, MediaPipe Pose | CP-02 / CA-02: detecta y superpone hombros (11,12), codos (13,14), muñecas (15,16) y caderas (23,24) durante toda la sesión. |
+| RF-03 | Medición de frecuencia de compresiones | Funcional | M | RN-01 | HU-03 | `rcp/analisis.py`, MediaPipe Pose, `rcp/reglas.py` | CP-03 / CA-03: calcula las cpm a partir del intervalo entre compresiones, actualiza tras cada ciclo y clasifica baja (<100), correcta (100-120) o alta (>120). |
+| RF-04 | Medición de profundidad de compresión | Funcional | M | RN-02 | HU-04 | `rcp/analisis.py`, OpenCV, ArUco | CP-04 / CA-04: estima la profundidad en cm a partir del desplazamiento vertical de las muñecas, con ArUco como escala, y clasifica insuficiente (<5), correcta (5-6) o excesiva (>6). |
+| RF-05 | Detección de posición de manos | Funcional | S | RN-03 | HU-05 | `rcp/analisis.py`, ArUco, `rcp/reglas.py` | CP-05 / CA-05: verifica si las manos están sobre el centro del tórax respecto de la referencia torácica y registra el error con su marca de tiempo. |
+| RF-06 | Detección de retorno torácico completo | Funcional | S | RN-04 | HU-05 | `rcp/analisis.py`, `rcp/reglas.py` | CP-06 / CA-06: evalúa el retorno midiendo la elevación de los hombros en la descompresión y registra el error con marca de tiempo. |
+| RF-07 | Detección de rectitud de brazos | Funcional | S | RN-05 | HU-05 | `rcp/analisis.py`, `rcp/reglas.py` | CP-07 / CA-07: calcula el ángulo hombro-codo-muñeca y registra el error con marca de tiempo si los brazos no se mantienen extendidos. |
+| RF-08 | Retroalimentación visual inmediata | Funcional | M | RN-06 | HU-06 | `rcp/retroalimentacion.py`, Tkinter | CP-08 / CA-08: muestra en tiempo real frecuencia y profundidad, color (verde correcto, rojo/amarillo desviación) y mensajes breves, sin interrupciones superiores a 2 s. |
+| RF-09 | Interfaz de usuario gráfica | Funcional | M | — | HU-02, HU-07 | `rcp/interfaz.py`, `rcp/sesion.py` | CP-09 / CA-09: muestra video, landmarks e indicadores. Botón siempre visible para finalizar; al finalizar detiene captura y análisis y muestra resumen (duración, frecuencia promedio, profundidad promedio, errores). |
+| RNF-01 | Rendimiento en tiempo real | No funcional | M | — | HU-01..04, HU-06 | `rcp/interfaz.py` (cronómetro) | CP-10 / CA-10: tiempo de procesamiento por fotograma y de generación de feedback menor a 100 ms. |
+| RNF-02 | Precisión en frecuencia | No funcional | M | RN-01 | HU-03 | `rcp/analisis.py`, `rcp/reglas.py` | CP-11 / CA-11: contra una referencia conocida (metrónomo 100-120 cpm), error absoluto ≤ 6 cpm (±5 %). |
+| RNF-03 | Precisión en profundidad | No funcional | M | RN-02 | HU-04 | `rcp/analisis.py`, `rcp/procesamiento.py` | CP-12 / CA-12: contra una profundidad medida con regla entre 5 y 6 cm, error absoluto < ±0,5 cm. |
+| RNF-04 | Usabilidad | No funcional | S | — | HU-02, HU-06, HU-07 | `rcp/interfaz.py` | CP-13 / CA-13: prueba piloto; el administrador inicia, usa y finaliza la sesión sin capacitación. |
+| RNF-05 | Disponibilidad | No funcional | M | — | HU-01, HU-07 | `rcp/captura.py`, `rcp/interfaz.py` | CP-14 / CA-14: disponibilidad con inactividad < 5 % durante las sesiones programadas. |
+| RNF-06 | Compatibilidad de hardware | No funcional | S | — | HU-01 | `rcp/captura.py`, MediaPipe Pose | CP-15 / CA-15: cámara web estándar 640×480 por USB en Intel Core i5 o similar, sin GPU. |
+| RNF-07 | Mantenibilidad | No funcional | C | — | HU-01..07 | Todos los módulos (ver §2) | CP-16 / CA-16: código documentado y organizado en módulos independientes: captura, procesamiento, análisis, reglas, retroalimentación, sesión e interfaz. |
 
-## 3. Landmarks (MediaPipe Pose, 33 puntos)
+## 2. Módulos (RNF-07 / CP-16)
 
-| Índice | Punto | Uso RCP |
-|--------|-------|---------|
-| 11, 12 | Hombros izq/der | Frecuencia auxiliar, recoil (elevación), referencia esternón |
-| 13, 14 | Codos izq/der | Ángulo brazo 11-13-15 / 12-14-16 |
-| 15, 16 | Muñecas izq/der | Señal principal compresión, profundidad, posición manos |
-| 23, 24 | Caderas izq/der | Postura tronco (inclinación), evita falsos por movimiento cuerpo |
+| Módulo | Archivo | Responsabilidad |
+|--------|---------|------------------|
+| Configuración | `rcp/configuracion.py` | Índices de landmarks y umbrales de todos los RN |
+| Captura de video | `rcp/captura.py` | Apertura de cámara, cronometraje (<3 s), error sin cámara |
+| Modelos | `rcp/modelos.py` | Descarga y creación de PoseLandmarker / HandLandmarker |
+| Procesamiento | `rcp/procesamiento.py` | ArUco (escala), extracción de landmarks, superposición gráfica |
+| Análisis | `rcp/analisis.py` | Señal, contador de compresiones, cpm, profundidad, ángulos, retorno |
+| Reglas | `rcp/reglas.py` | Motor RN-01 a RN-06 con estados ok / alerta / error / espera |
+| Retroalimentación | `rcp/retroalimentacion.py` | Mensaje principal, color y lista de correcciones |
+| Sesión | `rcp/sesion.py` | Ciclo de vida, promedios, errores con marca de tiempo, resumen |
+| Interfaz | `rcp/interfaz.py` | GUI Tkinter, panel de indicadores, registro de eventos, CSV |
 
-Dibujo: `POSE_LINES = [(11,12),(11,13),(13,15),(12,14),(14,16),(11,23),(12,24),(23,24)]`
+Punto de entrada: `main.py`. Pruebas: `pruebas/test_criterios.py`.
+
+> `app_rcp_aruco_pose.py` es la versión monolítica anterior a esta
+> reorganización. Se conserva solo como referencia; **no** cumple RNF-07 y no
+> debe usarse como punto de entrada.
+
+## 3. Landmarks utilizados (RF-02)
+
+| Índices | Punto | Uso |
+|---------|-------|-----|
+| 11, 12 | Hombros | Retorno torácico (RN-04), referencia de simetría |
+| 13, 14 | Codos | Ángulo hombro-codo-muñeca (RN-05) |
+| 15, 16 | Muñecas | Señal de compresión, profundidad (RN-01, RN-02), separación de manos (RN-03) |
+| 23, 24 | Caderas | Referencia postural del tronco |
 
 ## 4. Fórmulas
 
-- Escala: `px_por_cm = lado_px_aruco / tamaño_real_cm`
-- Profundidad: `prof = valle_y_cm - alto_previo_cm` (promedio últimas 5)
-- Frecuencia: `frec = 60 / media(últimos 5 intervalos entre valles)`
-- Dist. manos: `d_manos = |15-16| / px_por_cm` → OK si <12 cm
-- Posición esternón: `|midX(muñecas)-midX(hombros)| < 0.15*ancho_hombros` y `dist(mid_muñecas, aruco) < 15 cm` si hay ArUco
-- Recoil: `shoulder_y` vuelve a `baseline_hombros ±1.0 cm` antes del siguiente valle
-- Ángulo: `acos((BA·BC)/(|BA||BC|))`, OK si ≥150°
+- Escala: `px_por_cm = lado_px_aruco / tamaño_real_cm` (ArUco ID 0 impreso a 5,0 cm).
+- Señal: `y_cm = (y_suavizada_muñecas − línea_base) / px_por_cm`.
+- Profundidad: `amplitud = valle − punto_alto` de cada ciclo, promedio de las últimas 5.
+- Frecuencia: `cpm = 60 / media(últimos 5 intervalos entre valles)`.
+- Posición de manos: separación de muñecas ≤ 12 cm y desalineación del punto medio de
+  muñecas respecto del ArUco ≤ 0,35 × ancho de hombros.
+- Retorno torácico: `desvio_hombros_cm < 2 cm` respecto de la línea base de hombros.
+- Ángulo de brazo: `acos((BA·BC)/(|BA||BC|))`; extendidos si ≥ 150°.
 
-Rangos AHA: frecuencia 100–120 cpm, profundidad 5–6 cm.
+Referencias AHA: 100-120 cpm y 5-6 cm de profundidad.
 
-## 5. Criterios de aceptación
-
-1. Video ≥15 fps medido con `t` y contador fps en pantalla.
-2. Con torso visible: los 8 landmarks (11,12,13,14,15,16,23,24) se dibujan.
-3. Simulación senoidal 1.83 Hz, 5.5 cm pico-pico → conteo 18/10 s, frec 110±5, prof 5.5±0.5 (test `CompressionCounter`).
-4. Sin ArUco: sistema avisa "Sin escala", usa escala aprox 10 px/cm, no se bloquea.
-5. CSV con columnas: timestamp, t_s, wrist_x/y, caderas, aruco, distancias, px_por_cm, compresiones, frec, prof, recoil, ang_brazo.
-
-## 6. Arquitectura
+## 5. Verificación
 
 ```
-Cámara → OpenCV → ArUco (escala) → MediaPipe Tasks Pose/Hands (VIDEO) →
-señal muñecas → CompressionCounter → métricas → overlay cv2 + GUI Tk + CSV
+.\venv\Scripts\python -m pruebas.test_criterios
 ```
 
-- `app_rcp_aruco_pose.py`: versión Tkinter (requiere TCL_LIBRARY/TK_LIBRARY en venv Windows).
-- `app_rcp_cv2.py`: versión solo-OpenCV (`imshow`), sin Tkinter, evita error `init.tcl`.
-- `models/`: `pose_landmarker_lite.task`, `hand_landmarker.task` (descarga auto).
-- `aruco_ID0.png`: marcador DICT_4X4_50 ID 0 para imprimir a 5.0 cm.
+Resultados actuales (todas aprobadas):
 
-## 7. Error conocido Windows + venv + Tkinter
+| Prueba | Criterio | Resultado medido |
+|--------|----------|-------------------|
+| Índices de landmarks | CA-02 | 11,12,13,14,15,16,23,24 detectados |
+| Clasificación de cpm (80/110/140) | CA-03 | Correcta en los tres casos |
+| Clasificación de profundidad (3,5/5,5/8,0 cm) | CA-04 | Correcta en los tres casos |
+| Frecuencia con metrónomo 100/110/120 cpm | CA-11 / RNF-02 | 100,0 / 110,4 / 120,0 cpm (error ≤ 0,4) |
+| Profundidad 5,0 / 5,5 / 6,0 cm | CA-12 / RNF-03 | 4,93 / 5,42 / 5,92 cm (error ≤ 0,08) |
+| Posición de manos juntas vs separadas | CA-05 | Detecta ambos casos |
+| Retorno completo vs colapso postural | CA-06 | Detecta ambos casos |
+| Ángulos 180° / 90° y brazos flexionados | CA-07 | Correcto; alerta por debajo de 150° |
+| Feedback con color y dos correcciones | CA-08 | Verde correcto; naranja/rojo en desviación |
+| Tiempo de proceso por fotograma | CA-10 / RNF-01 | 0,14 ms (límite 100 ms) |
+| Registro de errores con marca de tiempo | CA-05/06/07 | 4 errores, formato HH:MM:SS.mmm, sin duplicados |
 
-`_tkinter.TclError: Can't find a usable init.tcl` → el venv no propaga Tcl.
-Fix aplicado en `venv/Scripts/activate.bat` y `Activate.ps1`:
-`TCL_LIBRARY=...Python313\tcl\tcl8.6`, `TK_LIBRARY=...tcl\tk8.6`.
-Alternativa: usar `app_rcp_cv2.py` o `ejecutar_rcp.bat`.
+## 6. Notas de operación en Windows
+
+Tkinter dentro del venv puede fallar con `_tkinter.TclError: Can't find a usable
+init.tcl`. El fix es definir `TCL_LIBRARY` y `TK_LIBRARY`, lo cual ya quedó
+incorporado en `venv/Scripts/activate.bat`, `venv/Scripts/Activate.ps1` y
+`ejecutar_rcp.bat`.
