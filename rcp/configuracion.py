@@ -102,6 +102,14 @@ class Configuracion:
     # --- Registro de errores con marca de tiempo (CA-05, CA-06, CA-07) ---
     enfriamiento_error_s: float = 1.0
 
+    # --- Cuenta regresiva de posicionamiento (RNF-04 usabilidad) ---
+    #: Segundos que el usuario tiene para ubicarse antes de analizar.
+    #: Durante este periodo se muestra el video y los landmarks pero no se
+    #: mide nada ni corre la duración de la sesión.
+    cuenta_atras_s: int = 5
+    #: Texto mostrado durante la cuenta regresiva.
+    mensaje_cuenta_atras: str = "Pongase en posicion frente a la camara"
+
     # --- Longitud del historial para la mini-gráfica de la señal ---
     muestras_historial: int = 90
 

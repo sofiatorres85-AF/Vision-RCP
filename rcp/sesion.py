@@ -72,6 +72,56 @@ class ResumenSesion:
         return "\n".join(lineas)
 
 
+class CuentaAtras:
+    """Cuenta regresiva de posicionamiento previa a la sesión (RNF-04).
+
+    Lógica pura, sin dependencias de Tkinter ni OpenCV, de modo que pueda
+    verificarse en ``pruebas/test_criterios.py``.
+
+    Flujo::
+
+        cuenta = CuentaAtras(5)
+        cuenta.iniciar()    -> 5   (segundos restantes)
+        cuenta.avanzar()    -> 4
+        ...
+        cuenta.avanzar()    -> 0   y ``terminada`` pasa a True
+    """
+
+    def __init__(self, segundos: int = 5) -> None:
+        self.segundos_totales = max(0, int(segundos))
+        self.restantes = 0
+        self.en_curso = False
+
+    @property
+    def terminada(self) -> bool:
+        """``True`` cuando no hay cuenta regresiva en curso."""
+        return not self.en_curso
+
+    @property
+    def en_ejecucion(self) -> bool:
+        return self.en_curso
+
+    def iniciar(self) -> int:
+        """Arranca la cuenta regresiva y devuelve los segundos restantes."""
+        self.restantes = self.segundos_totales
+        self.en_curso = self.segundos_totales > 0
+        return self.restantes
+
+    def avanzar(self) -> int:
+        """Descuenta un segundo y devuelve los restantes (0 al terminar)."""
+        if not self.en_curso:
+            return 0
+        self.restantes = max(0, self.restantes - 1)
+        if self.restantes == 0:
+            self.en_curso = False
+        return self.restantes
+
+    def cancelar(self) -> None:
+        """Corta la cuenta regresiva sin arrancar la sesión."""
+        self.en_curso = False
+        self.restantes = 0
+
+
 class Sesion:
     """Estado y métricas agregadas de una sesión de entrenamiento."""
 

@@ -30,6 +30,20 @@ COLOR_ALERTA_BGR = (0, 180, 255)
 COLOR_ERROR_BGR = (0, 0, 255)
 COLOR_ESPERA_BGR = (200, 200, 200)
 
+# Fondos claros para los paneles de estado: legibles con texto negro.
+FONDO_OK = "#dff5df"
+FONDO_ALERTA = "#ffe9c2"
+FONDO_ERROR = "#fbd9d9"
+FONDO_ESPERA = "#e9e9e9"
+
+#: Fondos por estado de regla, para el panel "¿Qué está mal?".
+FONDOS_POR_ESTADO = {
+    ESTADO_OK: FONDO_OK,
+    ESTADO_ALERTA: FONDO_ALERTA,
+    ESTADO_ERROR: FONDO_ERROR,
+    ESTADO_ESPERA: FONDO_ESPERA,
+}
+
 
 class GeneradorFeedback:
     """Selecciona el mensaje más relevante y su color."""
@@ -53,6 +67,11 @@ class GeneradorFeedback:
         if estado == ESTADO_ESPERA:
             return COLOR_ESPERA_BGR
         return COLOR_ERROR_BGR
+
+    @staticmethod
+    def fondo_por_estado(estado: str) -> str:
+        """Fondo claro del panel de estado; el texto siempre va en negro."""
+        return FONDOS_POR_ESTADO.get(estado, FONDO_ESPERA)
 
     @staticmethod
     def generar(reglas: Sequence[ResultadoRegla]) -> Tuple[str, str, str]:

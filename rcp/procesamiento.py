@@ -234,3 +234,89 @@ class Dibujante:
             cv2.line(frame, puntos[i - 1], puntos[i], (0, 220, 0), 2)
         cv2.putText(frame, "Senal munecas", (x0 + 6, y0 + 16), cv2.FONT_HERSHEY_SIMPLEX,
                     0.4, (220, 220, 220), 1, cv2.LINE_AA)
+
+    def dibujar_errores(
+        self,
+        frame: np.ndarray,
+        filas: Sequence[Tuple[Tuple[int, int, int], str]],
+    ) -> None:
+        """Panel «¿Qué está mal?» sobre el video, una fila por regla (RF-08).
+
+        ``filas`` es una lista de ``(color_bgr, texto)`` ya ordenada por
+        gravedad, de modo que el error más importante aparezca primero.
+        """
+        if not filas:
+            return
+        alto, ancho = frame.shape[:2]
+        ancho_panel = max(240, min(430, int(ancho * 0.42)))
+        x0, x1 = ancho - ancho_panel, ancho - 6
+        y0 = 86
+        alto_fila = 26
+        alto_panel = 30 + alto_fila * len(filas)
+        y1 = min(alto - 6, y0 + alto_panel)
+        max_caracteres = max(16, int((ancho_panel - 60) / 11))
+
+        # Fondo translúcido, limitado al panel (RNF-01: ~11x menos píxeles
+        # que mezclar el fotograma completo).
+        self._fondo_translucido(frame, x0, y0, x1, y1, (30, 30, 30), 0.72)
+
+        cv2.putText(frame, "QUE ESTA MAL", (x0 + 12, y0 + 20),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.58, (255, 255, 255), 1, cv2.LINE_AA)
+        for indice, (color, texto) in enumerate(filas):
+            y = y0 + 46 + indice * alto_fila
+            if y + 8 > y1:
+                break
+            cv2.circle(frame, (x0 + 20, y - 5), 8, color, -1)
+            etiqueta = texto if len(texto) <= max_caracteres else texto[: max_caracteres - 1] + "..."
+            cv2.putText(frame, etiqueta, (x0 + 36, y),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1, cv2.LINE_AA)
+
+    @staticmethod
+    def _fondo_translucido(
+        frame: np.ndarray,
+        x0: int, y0: int, x1: int, y1: int,
+        color: Tuple[int, int, int],
+        alfa: float = 0.7,
+    ) -> None:
+        """Rellena un rectángulo translúcido tocando solo esa región.
+
+        Mezclar el fotograma completo con ``addWeighted`` cuesta el doble que
+        operar sobre el recorte, y aquí siempre se pinta el mismo rectángulo.
+        """
+        x0, y0 = max(0, x0), max(0, y0)
+        x1, y1 = min(frame.shape[1], x1), min(frame.shape[0], y1)
+        if x1 <= x0 or y1 <= y0:
+            return
+        region = frame[y0:y1, x0:x1]
+        relleno = np.empty_like(region)
+        relleno[:] = color
+        frame[y0:y1, x0:x1] = cv2.addWeighted(relleno, alfa, region, 1.0 - alfa, 0)
+
+    def dibujar_cuenta_atras(self, frame: np.ndarray, restantes: int, mensaje: str) -> None:
+        """Gran cuenta regresiva centrada antes de empezar a analizar (RNF-04)."""
+        alto, ancho = frame.shape[:2]
+        centro = (ancho // 2, alto // 2 - 40)
+        radio = max(70, int(min(ancho, alto) * 0.14))
+
+        margen = radio + 18
+        self._fondo_translucido(
+            frame, centro[0] - margen, centro[1] - margen,
+            centro[0] + margen, centro[1] + margen, (30, 30, 30), 0.75,
+        )
+
+        # A medida que faltan menos segundos el círculo pasa de rojo a verde.
+        if restantes > 3:
+            color = (60, 200, 255)      # ámbar
+        elif restantes > 1:
+            color = (0, 170, 255)       # naranja
+        else:
+            color = (0, 220, 0)         # verde
+        cv2.circle(frame, centro, radio, color, 5, cv2.LINE_AA)
+        cv2.putText(frame, str(max(0, restantes)), centro, cv2.FONT_HERSHEY_SIMPLEX,
+                    radio / 45.0, color, 5, cv2.LINE_AA)
+
+        texto = mensaje or ""
+        ancho_texto, _ = cv2.getTextSize(texto, cv2.FONT_HERSHEY_SIMPLEX, 1.0, 2)
+        posicion = ((ancho - ancho_texto[0]) // 2, centro[1] + radio + 52)
+        cv2.putText(frame, texto, posicion, cv2.FONT_HERSHEY_SIMPLEX, 1.0,
+                    (255, 255, 255), 2, cv2.LINE_AA)
