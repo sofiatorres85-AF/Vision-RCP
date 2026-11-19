@@ -1,34 +1,51 @@
 # AGENTS.md — Reglas y contexto para agentes de IA
 
-Guía para que cualquier agente trabajen en este repositorio sin romper nada.
-Documento viviente: si cambias algo estructural, actualízalo en el mismo commit.
+Guía para que cualquier agente trabaje en este repositorio sin romper nada.
+Documento viviente: si cambias algo estructural, actualízalo en el mismo
+commit.
 
 ---
 
-## 1. Contexto del proyecto
+## 1. Contexto (Context Spec)
 
 **Nombre:** Sistema de análisis de técnica de RCP.
 **Objetivo de grado:** evaluar con una cámara web la técnica de reanimación
 cardiopulmonar en adultos (frecuencia, profundidad, posición de manos, retorno
 torácico y rectitud de brazos) y dar retroalimentación inmediata al alumno.
 
-*Idioma del proyecto: español.* Los nombres de archivos, funciones, comentarios,
-mensajes de la interfaz y la documentación están en español. No traduzcas nada
-al inglés salvo que se pida explícitamente.
+- **Idioma:** español. Los nombres de archivos, funciones, comentarios,
+  mensajes de la interfaz y la documentación están en español. No traduzcas
+  nada al inglés salvo que se pida explícitamente.
+- **Stack:** Python 3, OpenCV, MediaPipe Pose y Tkinter. Sin frameworks web y
+  sin base de datos.
+- **Arquitectura:** monolito de escritorio, un solo proceso local, sin
+  comunicación por red.
+- **Parámetros de negocio (AHA 2025):** frecuencia 100-120 cpm y profundidad
+  5-6 cm. Son valores fijos y residen en `rcp/configuracion.py`; nunca en la
+  interfaz ni hardcodeados en otro módulo.
+- **Referencia funcional:** antes de codificar, lee `docs/01_requisitos.md` y
+  `docs/02_historias_usuario.md` (solo lectura; ver §3).
 
 ---
 
 ## 2. Estructura
 
 ```
-main.py              punto de entrada (lleva Tkinter al mainloop)
-ejecutar_rcp.bat     lanzador Windows (define Tcl/Tk, ejecuta main.py)
-requirements.txt     dependencias
-rcp/                 paquete de código fuente (10 módulos)
-pruebas/             verificación de criterios de aceptación
-docs/                documentación
-aruco_ID0.png        marcador ArUco a imprimir
+main.py                 punto de entrada (lleva Tkinter al mainloop)
+ejecutar_rcp.bat        lanzador Windows (define Tcl/Tk, ejecuta main.py)
+requirements.txt        dependencias
+AGENTS.md               este documento
+README.md               presentación y guía rápida
+rcp/                    9 módulos (más __init__.py)
+pruebas/                test_criterios.py (sin seguimiento en Git)
+docs/                   documentación del proyecto
+aruco_ID0.png           marcador ArUco a imprimir
+app_rcp_aruco_pose.py   versión monolítica anterior (solo referencia)
+venv/                   entorno virtual (ignorado por Git)
+models/                 modelos .task de MediaPipe (ignorados por Git)
 ```
+
+`rcp/__init__.py` solo marca el paquete; no contiene lógica.
 
 ### Módulos de `rcp/` y su responsabilidad
 
@@ -51,7 +68,113 @@ dependencia ahí, rompes el aislamiento.
 
 ---
 
-## 3. Comandos
+## 3. Límites (Boundary Spec)
+
+- **NO** implementes base de datos ni persistencia. El registro es manual en
+  CSV/Excel (ver Limitaciones del proyecto).
+- **NO** añadas dependencias que requieran GPU. El sistema debe correr en CPU
+  sin GPU dedicada (RNF-06).
+- **NO** modifiques `docs/` por tu cuenta. Si necesitas un cambio de requisito,
+  umbral, regla o arquitectura, propónlo y espera aprobación humana. Esta regla
+  aplica también a la trazabilidad (§6).
+- **NO** modifiques las pruebas existentes para que pasen. Si una prueba falla,
+  corrige el código de producción.
+- **NO** hardcodees los valores de la AHA. Léelos desde
+  `rcp/configuracion.py`. Si necesitas un umbral nuevo, agrega un campo en ese
+  archivo con el número de requisito en el comentario.
+- **NO** elimines ni renombres módulos de `rcp/` sin actualizar `main.py` y
+  `pruebas/`, y sin proponer la actualización correspondiente de `docs/`.
+- **NO** fusiones `analisis`, `reglas`, `retroalimentacion` o `sesion` en un
+  solo archivo: incumple CP-16.
+- **NO** reemplaces la API de MediaPipe Tasks por `mp.solutions` (eliminada en
+  1.x) ni instales `mediapipe<1.0` sin avisar.
+- **NO** modifiques `app_rcp_aruco_pose.py`: es la versión monolítica anterior,
+  se conserva como referencia y no se usa como punto de entrada.
+- **NO** subas `pruebas/` hasta que el usuario lo autorice expresamente.
+
+---
+
+## 4. Calidad (Quality Spec — ISO/IEC 25010)
+
+- **Eficiencia (RNF-01):** cada fotograma debe procesarse en menos de 100 ms.
+  Si tu código introduce un cuello de botella, debes justificarlo.
+- **Exactitud (RNF-02, RNF-03):** la frecuencia debe cumplir un error máximo de
+  5 % (≈ 6 cpm a 120 cpm) y la profundidad no debe desviarse más de ±0,5 cm.
+- **Mantenibilidad (RNF-07):** organiza el código en módulos separados
+  (`rcp/captura.py`, `rcp/procesamiento.py`, `rcp/analisis.py`,
+  `rcp/reglas.py`, `rcp/retroalimentacion.py`, `rcp/sesion.py`,
+  `rcp/interfaz.py`, `rcp/configuracion.py`, `rcp/modelos.py`). No mezcles
+  responsabilidades en un solo archivo.
+- **Usabilidad (RNF-04):** la interfaz debe ser clara, con códigos de color
+  (verde/rojo/amarillo) y mensajes breves (ej. "Presiona más hondo").
+
+### 4.1 Convenciones de código
+
+- **Español** en identificadores (`AnalizadorRCP`, `regla_profundidad`) y en
+  los docstrings. Comenta el *por qué*, no el *qué*.
+- **Docstrings** en todos los módulos, clases y funciones públicas, citando el
+  requisito que implementan (ej. `"RN-02 / RF-04 / CA-04"`), en formato Google
+  o NumPy.
+- **`dataclass`** para datos (`Configuracion`, `Metricas`, `ResultadoRegla`,
+  `ErrorDetectado`, `ResumenSesion`). Usa `frozen=True` cuando sea inmutable.
+- **Tipo completo** en las firmas (`Optional[float]`, `List[...]`).
+- **Sin excepciones genéricas silenciosas**: si capturas una, deja mensaje.
+- **Nombres de variables** en minúscula con guion bajo; constantes en
+  mayúsculas.
+- Mantén los nombres de la interfaz existentes (`etiqueta_*`, `boton_*`) para
+  no romper referencias.
+
+### 4.2 Pruebas
+
+- `pruebas/test_criterios.py` es un **script plano**, no un framework: usa
+  `comprobar(nombre, condicion)` y termina con un resumen `PASS`/`FALLA`.
+  Devuelve código de salida distinto de cero si algo falla.
+- Cada funcionalidad nueva agrega comprobaciones para sus criterios CA-xx.
+- No modifiques las comprobaciones existentes para que pasen; corrige el código
+  de producción. La única excepción es que el requisito haya cambiado de forma
+  aprobada.
+- No migres las pruebas a otro framework sin aprobación.
+
+---
+
+## 5. Seguridad (OWASP)
+
+- **Sandboxing:** ejecuta comandos de shell solo dentro del entorno virtual de
+  Python (venv). No instales paquetes globalmente.
+- **Permisos:** pide confirmación antes de ejecutar comandos que modifiquen
+  archivos fuera de `rcp/`.
+- **Secretos:** nunca escribas claves API ni rutas absolutas de tu máquina en
+  el código. Usa variables de entorno o rutas relativas.
+- **Inyección:** trata los datos de entrada de la cámara (frames) como no
+  confiables. Valida tipos y rangos antes de procesarlos.
+
+---
+
+## 6. Flujo de trabajo (basado en IEEE 3398 y SDD)
+
+**Planificación.** Antes de escribir código para una nueva HU, presenta un plan
+con: (1) archivos a modificar, (2) estrategia de pruebas, (3) verificación de
+que cumples los RNF.
+
+**Commits.**
+
+- Escribe los mensajes en español y menciona el requisito que cubren (`RF-04`,
+  `CA-09`, `CP-11`, etc.).
+- `pruebas/` no se sube hasta que el usuario lo autorice expresamente.
+- `venv/`, `models/*.task`, `__pycache__/` y `*.csv` están en `.gitignore`; no
+  los agregues al control de versiones.
+
+**Trazabilidad.** Cada cambio funcional debe rastrearse en `docs/`, pero la IA
+no edita `docs/` por su cuenta: propone el cambio y espera aprobación humana.
+
+- ¿Agregaste un requisito? → propón su fila RF/RNF y su criterio de aceptación
+  en `docs/01_requisitos.md`.
+- ¿Cambiaste un umbral? → propón la actualización de `docs/04_parametros_aha.md`.
+- ¿Agregaste una regla nueva? → propón la RN en ambos documentos.
+
+---
+
+## 7. Comandos
 
 ```bat
 :: entorno
@@ -64,66 +187,19 @@ pip install -r requirements.txt
 :: pruebas de criterios de aceptación
 .\venv\Scripts\python -m pruebas.test_criterios
 
-:: verificación rápida de sintaxis
-.\venv\Scripts\python -m py_compile main.py <archivo.py>
+:: verificación de sintaxis de un archivo
+.\venv\Scripts\python -m py_compile <archivo.py>
+
+:: verificación de sintaxis de todo el proyecto
+.\venv\Scripts\python -m compileall -q main.py rcp
 ```
 
-**Siempre** usa el Python del venv (`.\venv\Scripts\python` o el venv activado).
-El `python` global no tiene `cv2` instalado y fallará.
+**Siempre** usa el Python del venv (`.\venv\Scripts\python` o el venv
+activado). El `python` global no tiene `cv2` instalado y fallará.
 
 ---
 
-## 4. Reglas
-
-### 4.1 No romper
-
-* No elimines ni renombres módulos de `rcp/` sin actualizar `main.py`,
-  `pruebas/` y toda la documentación de `docs/`.
-* No cambies umbrales AHA sueltos dentro del código: van en
-  `rcp/configuracion.py`. Si necesitas un umbral nuevo, agrega un campo ahí con
-  el número de requisito en el comentario.
-* No fusiones `analisis`, `reglas`, `retroalimentacion` o `sesion` en un solo
-  archivo: incumple CP-16.
-* No reemplaces la API de MediaPipe Tasks por `mp.solutions` (eliminada en 1.x)
-  ni instales `mediapipe<1.0` sin avisar.
-
-### 4.2 Commits
-
-* `pruebas/` **no** se sube hasta que el usuario lo autorice expresamente.
-* `app_rcp_aruco_pose.py` es la versión monolítica anterior: se conserva como
-  referencia, no se modifica, no se usa como punto de entrada.
-* `venv/`, `models/*.task`, `__pycache__/` y `*.csv` están en `.gitignore`;
-  no los agregues al control de versiones.
-* Escribe los mensajes de commit en español y menciona el requisito que cubren
-  (`RF-04`, `CA-09`, `CP-11`, etc.).
-
-### 4.3 Trazabilidad
-
-Cada cambio funcional debe rastrearse en `docs/01_requisitos.md`:
-
-* ¿Agregaste un requisito? → agrega su fila RF/RNF y su criterio de aceptación.
-* ¿Cambiaste un umbral? → actualiza `docs/04_parametros_aha.md`.
-* ¿Agregaste una regla nueva? → aggiorna RN en ambos documentos.
-
----
-
-## 5. Convenciones de código
-
-* **Español** en identificadores (`AnalizadorRCP`, `regla_profundidad`) y en los
-  docstrings. Comenta el *por qué*, no el *qué*.
-* **Docstrings** en todos los módulos, clases y funciones públicas, citando el
-  requisito que implementan (ej. `"RN-02 / RF-04 / CA-04"`).
-* **`dataclass`** para datos (Configuracion, Metricas, ResultadoRegla,
-  ErrorDetectado, ResumenSesion). Usa `frozen=True` cuando sea inmutable.
-* **Tipo completo** en las firmas (`Optional[float]`, `List[...]`).
-* **Sin excepciones genéricas silenciosas**; si capturas una, deja mensaje.
-* **Nombre de variables** en minúscula con guion bajo; constantes en mayúsculas.
-* Mantén los nombres de la interfaz existentes (`etiqueta_*`, `boton_*`) para no
-  romper referencias.
-
----
-
-## 6. Pitfalls conocidos (no los vuelvas a redescubrir)
+## 8. Problemas conocidos (pitfalls)
 
 | Pitfall | Detalle |
 |---------|---------|
@@ -138,19 +214,21 @@ Cada cambio funcional debe rastrearse en `docs/01_requisitos.md`:
 
 ---
 
-## 7. Verificación antes de dar por terminado un cambio
+## 9. Verificación antes de dar por terminado un cambio
 
-1. `.\venv\Scripts\python -m py_compile main.py rcp\*.py` sin errores.
+1. `.\venv\Scripts\python -m compileall -q main.py rcp` sin errores.
 2. `.\venv\Scripts\python -m pruebas.test_criterios` → **todas PASS**.
 3. Si tocaste la GUI: lanza `ejecutar_rcp.bat`, inicia y finaliza una sesión,
    y confirma que aparece el resumen.
-4. Actualiza `docs/` si cambió requisito, umbral o arquitectura.
+4. Si cambió un requisito, un umbral o la arquitectura: **propón** la
+   actualización de `docs/` y espera aprobación humana; no la edites por tu
+   cuenta.
 5. Ejecuta `git status` y confirma que `pruebas/` sigue sin trackear salvo
    autorización expresa.
 
 ---
 
-## 8. Requisitos de referencia rápida
+## 10. Referencia rápida de requisitos
 
 | ID | Requisito |
 |----|-----------|
@@ -164,74 +242,12 @@ Cada cambio funcional debe rastrearse en `docs/01_requisitos.md`:
 | RF-08 | Feedback con color y mensaje, sin demoras > 2 s |
 | RF-09 | GUI con video, landmarks, indicadores y finalización con resumen |
 | RNF-01 | Proceso por fotograma < 100 ms |
-| RNF-02 | Error de frecuencia ≤ 6 cpm |
+| RNF-02 | Precisión en frecuencia: error máximo de 5 % (≈ 6 cpm a 120 cpm) |
 | RNF-03 | Error de profundidad < ±0,5 cm |
+| RNF-04 | Usabilidad: interfaz clara, uso sin capacitación |
+| RNF-05 | Disponibilidad: inactividad < 5 % en sesiones programadas |
+| RNF-06 | Cámara web 640×480 por USB; CPU sin GPU dedicada |
 | RNF-07 | Módulos independientes y documentados |
 
-Detalle completo: [`docs/01_requisitos.md`](docs/01_requisitos.md).
-
----
----
-
-# AGENTS.md - Reglas para el Agente de IA
-
-> **Nota de aplicación en este repositorio.** Antes de aplicar las reglas
-> siguientes, ten en cuenta tres aclaraciones:
->
-> 1. **`src/` = `rcp/`.** En este proyecto el paquete de código fuente se llama
->    `rcp/` (no existe carpeta `src/`). Los nombres `captura.py`,
->    `deteccion_pose.py`, `analizador_rcp.py`, `motor_reglas.py` e `interfaz.py`
->    de la sección 3 corresponden, en orden, a `rcp/captura.py`,
->    `rcp/procesamiento.py`, `rcp/analisis.py`, `rcp/reglas.py` e
->    `rcp/interfaz.py`. El alcance de permisos de la sección 4 se lee como
->    "archivos fuera de `rcp/`". `rcp/` contiene además `configuracion.py`,
->    `modelos.py`, `retroalimentacion.py` y `sesion.py`, que la sección 3 no
->    enumera pero que CP-16 sí exige.
-> 2. **`docs/` sí se modifica, solo con aprobación.** La sección 2 prohíbe
->    tocar `docs/`; en este repositorio la regla operativa es: proponer el
->    cambio y esperar aprobación humana, tal como indica la propia sección 2
->    ("propónlo y espera aprobación humana"). Mientras tanto, actualiza los
->    requisitos en `docs/01_requisitos.md` y los umbrales en
->    `docs/04_parametros_aha.md` solo con esa aprobación.
-> 3. **Las pruebas son un script plano.** `pruebas/test_criterios.py` no usa
->    `pytest` ni `unittest`: es un script con `comprobar(nombre, condicion)` y
->    un resumen `PASS`/`FALLA` al final. Amplía ese formato para los nuevos CA;
->    no lo migres a otro framework sin aprobación.
-
-## 1. Contexto del Proyecto (Context Spec)
-
-Eres un asistente de codificación para un prototipo de visión artificial que evalúa la técnica de RCP.
-
-- **Stack:** Python 3, OpenCV, MediaPipe Pose, Tkinter (sin frameworks web, sin base de datos).
-- **Arquitectura:** Monolito de escritorio, un solo proceso local, sin comunicación por red.
-- **Parámetros de negocio (AHA 2025):** Frecuencia 100-120 cpm, Profundidad 5-6 cm. Estos valores son fijos y residen en un archivo de configuración (no en la interfaz).
-- **Referencia funcional:** Antes de codificar, lee `docs/01_requisitos.md` y `docs/02_historias_usuario.md`.
-
-## 2. Límites y Restricciones (Boundary Spec)
-
-- **NO** implementes base de datos ni persistencia. El registro es manual en CSV/Excel (ver Limitaciones del proyecto).
-- **NO** añadas dependencias que requieran GPU. El sistema debe correr en CPU (Intel Core i5 o similar).
-- **NO** modifiques los archivos en `docs/`. Si necesitas un cambio de requisito, propónlo y espera aprobación humana.
-- **NO** modifiques los tests existentes para que pasen. Si un test falla, corrige el código de producción.
-- **NO** hardcodees los valores de la AHA. Léelos desde el archivo de configuración.
-
-## 3. Estándares de Calidad (Quality Spec - ISO/IEC 25010)
-
-- **Eficiencia (RNF-01):** Cada fotograma debe procesarse en menos de 100 ms. Si tu código introduce un cuello de botella, debes justificarlo.
-- **Exactitud (RNF-02, RNF-03):** La frecuencia no debe desviarse más del ±5% (±6 cpm) y la profundidad más de ±0.5 cm.
-- **Mantenibilidad (RNF-07):** Organiza el código en módulos separados: `captura.py`, `deteccion_pose.py`, `analizador_rcp.py`, `motor_reglas.py`, `interfaz.py`. No mezcles responsabilidades en un solo archivo.
-- **Usabilidad (RNF-04):** La interfaz debe ser clara, con códigos de color (verde/rojo/amarillo) y mensajes breves (ej. "Presiona más hondo").
-
-## 4. Reglas de Seguridad (OWASP)
-
-- **Sandboxing:** Ejecuta comandos de shell solo dentro del entorno virtual de Python (venv). No instales paquetes globalmente.
-- **Permisos:** Pide confirmación antes de ejecutar comandos que modifiquen archivos fuera de `src/`.
-- **Secretos:** Nunca escribas claves API o rutas absolutas de tu máquina en el código. Usa variables de entorno o rutas relativas.
-- **Inyección:** Trata los datos de entrada de la cámara (frames) como no confiables. Valida los tipos y rangos antes de procesarlos.
-
-## 5. Flujo de Trabajo (Basado en IEEE 3398 y SDD)
-
-- **Planificación:** Antes de escribir código para una nueva HU, presenta un plan con: (1) archivos a modificar, (2) estrategia de pruebas, (3) verificación de que cumples los RNF.
-- **Pruebas:** Para cada funcionalidad, escribe un test unitario (usando `pytest` o `unittest`) que verifique los criterios de aceptación (CA-01 a CA-16).
-- **Commits:** Usa mensajes claros que referencien el requisito (ej. `feat: implementar RF-03 medicion de frecuencia`).
-- **Documentación:** Documenta cada módulo con docstrings en formato Google o NumPy.
+Detalle completo: [`docs/01_requisitos.md`](docs/01_requisitos.md) (solo
+lectura; ver §3).
