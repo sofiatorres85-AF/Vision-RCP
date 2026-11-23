@@ -37,7 +37,7 @@ requirements.md         dependencias
 AGENTS.md               este documento
 README.md               presentación y guía rápida
 rcp/                    9 módulos (más __init__.py)
-pruebas/                test_criterios.py (sin seguimiento en Git)
+pruebas/                test_criterios.py y su documentación
 docs/                   documentación del proyecto
 venv/                   entorno virtual (ignorado por Git)
 models/                 modelos .task de MediaPipe (ignorados por Git)
@@ -86,9 +86,8 @@ dependencia ahí, rompes el aislamiento.
   solo archivo: incumple CP-16.
 - **NO** reemplaces la API de MediaPipe Tasks por `mp.solutions` (eliminada en
   1.x) ni instales `mediapipe<1.0` sin avisar.
-- **NO** modifiques `app_rcp_aruco_pose.py`: es la versión monolítica anterior,
-  se conserva como referencia y no se usa como punto de entrada.
-- **NO** subas `pruebas/` hasta que el usuario lo autorice expresamente.
+- **NO** subas cambios de `pruebas/` hasta que el usuario lo autorice
+  expresamente.
 
 ---
 
@@ -158,7 +157,8 @@ que cumples los RNF.
 
 - Escribe los mensajes en español y menciona el requisito que cubren (`RF-04`,
   `CA-09`, `CP-11`, etc.).
-- `pruebas/` no se sube hasta que el usuario lo autorice expresamente.
+- Los cambios en `pruebas/` no se suben hasta que el usuario lo autorice
+  expresamente.
 - `venv/`, `models/*.task`, `__pycache__/` y `*.csv` están en `.gitignore`; no
   los agregues al control de versiones.
 
@@ -221,8 +221,7 @@ activado). El `python` global no tiene `cv2` instalado y fallará.
 4. Si cambió un requisito, un umbral o la arquitectura: **propón** la
    actualización de `docs/` y espera aprobación humana; no la edites por tu
    cuenta.
-5. Ejecuta `git status` y confirma que `pruebas/` sigue sin trackear salvo
-   autorización expresa.
+5. Ejecuta `git status` y confirma que no quedan cambios sin commitear.
 
 ---
 
