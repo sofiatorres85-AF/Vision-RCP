@@ -33,7 +33,7 @@ torácico y rectitud de brazos) y dar retroalimentación inmediata al alumno.
 ```
 main.py                 punto de entrada (lleva Tkinter al mainloop)
 ejecutar_rcp.bat        lanzador Windows (define Tcl/Tk, ejecuta main.py)
-requirements.txt        dependencias
+requirements.md         dependencias
 AGENTS.md               este documento
 README.md               presentación y guía rápida
 rcp/                    9 módulos (más __init__.py)
@@ -179,7 +179,7 @@ no edita `docs/` por su cuenta: propone el cambio y espera aprobación humana.
 ```bat
 :: entorno
 venv\Scripts\activate.bat
-pip install -r requirements.txt
+pip install "opencv-contrib-python>=4.9" "mediapipe>=1.0" "numpy>=1.26" "pillow>=10.0"
 
 :: aplicación (o usar ejecutar_rcp.bat)
 .\venv\Scripts\python main.py

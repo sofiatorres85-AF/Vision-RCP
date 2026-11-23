@@ -108,7 +108,7 @@ ni pantalla gráfica.
 Proyecto_Grado/
 ├── AGENTS.md
 ├── README.md
-├── requirements.txt
+├── requirements.md
 ├── ejecutar_rcp.bat
 ├── main.py                      # punto de entrada
 ├── docs/

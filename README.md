@@ -21,7 +21,7 @@ Pillow · Tkinter.
 
 ```bat
 venv\Scripts\activate.bat
-pip install -r requirements.txt
+pip install "opencv-contrib-python>=4.9" "mediapipe>=1.0" "numpy>=1.26" "pillow>=10.0"
 ```
 
 La primera ejecución descarga los modelos de MediaPipe a `models/`
@@ -85,7 +85,7 @@ entre ellos la precisión exigida por RNF-02 (≤ 6 cpm) y RNF-03 (≤ 0,5 cm).
 ```
 main.py              punto de entrada
 ejecutar_rcp.bat     inicio rápido (define Tcl/Tk y lanza main.py)
-requirements.txt     dependencias
+requirements.md      dependencias (instalación manual)
 rcp/                 código fuente (config, captura, modelos, procesamiento,
                      analisis, reglas, retroalimentacion, sesion, interfaz)
 pruebas/             verificación de criterios de aceptación
