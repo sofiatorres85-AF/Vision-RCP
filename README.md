@@ -32,8 +32,8 @@ La primera ejecución descarga los modelos de MediaPipe a `models/`
 Doble clic en **`ejecutar_rcp.bat`**, o en una terminal:
 
 ```bat
-set TCL_LIBRARY=C:\Users\lucas\AppData\Local\Programs\Python\Python313\tcl\tcl8.6
-set TK_LIBRARY=C:\Users\lucas\AppData\Local\Programs\Python\Python313\tcl\tk8.6
+set TCL_LIBRARY=%~dp0venv\tcl\tcl8.6
+set TK_LIBRARY=%~dp0venv\tcl\tk8.6
 .\venv\Scripts\python main.py
 ```
 
