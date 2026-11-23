@@ -130,8 +130,6 @@ Proyecto_Grado/
 ├── pruebas/
 │   ├── __init__.py
 │   └── test_criterios.py
-├── aruco_ID0.png                # marcador a imprimir
-├── app_rcp_aruco_pose.py        # versión anterior (solo referencia)
 └── venv/                        # entorno virtual (ignorado por git)
 ```
 

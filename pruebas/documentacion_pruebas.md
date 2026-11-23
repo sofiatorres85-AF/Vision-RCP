@@ -579,7 +579,7 @@ Estas pruebas no pueden sustituir la validación con hardware. Quedan fuera:
 | CA-13 / RNF-04 | Prueba piloto sin capacitación | Con usuarios. |
 | CA-14 / RNF-05 | Disponibilidad e inactividad < 5 % | Operación programada. |
 | CA-15 / RNF-06 | Cámara USB 640×480 en CPU sin GPU | Equipo objetivo. |
-| ArUco real | Escala con el marcador impreso | Manual, con `aruco_ID0.png` a 5,0 cm. |
+| ArUco real | Escala con el marcador impreso | Manual, con el marcador generado desde la interfaz a 5,0 cm. |
 
 **Sobre CA-16 / RNF-07:** estas pruebas sí aportan evidencia indirecta. El
 hecho de que `rcp/analisis.py`, `rcp/reglas.py`, `rcp/retroalimentacion.py` y

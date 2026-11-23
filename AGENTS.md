@@ -39,8 +39,6 @@ README.md               presentación y guía rápida
 rcp/                    9 módulos (más __init__.py)
 pruebas/                test_criterios.py (sin seguimiento en Git)
 docs/                   documentación del proyecto
-aruco_ID0.png           marcador ArUco a imprimir
-app_rcp_aruco_pose.py   versión monolítica anterior (solo referencia)
 venv/                   entorno virtual (ignorado por Git)
 models/                 modelos .task de MediaPipe (ignorados por Git)
 ```

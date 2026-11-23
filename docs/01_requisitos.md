@@ -49,10 +49,6 @@ Punto de entrada: `main.py`. Pruebas: `pruebas/test_criterios.py`.
 > `rcp/retroalimentacion.py` y `rcp/sesion.py` son los módulos exigidos por
 > CP-16 que la estructura `src/` no contempla.
 
-> `app_rcp_aruco_pose.py` es la versión monolítica anterior a esta
-> reorganización. Se conserva solo como referencia; **no** cumple RNF-07 y no
-> debe usarse como punto de entrada.
-
 ## 3. Landmarks utilizados (RF-02)
 
 | Índices | Punto | Uso |

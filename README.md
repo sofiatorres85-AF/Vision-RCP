@@ -90,7 +90,6 @@ rcp/                 código fuente (config, captura, modelos, procesamiento,
                      analisis, reglas, retroalimentacion, sesion, interfaz)
 pruebas/             verificación de criterios de aceptación
 docs/                documentación del proyecto
-aruco_ID0.png        marcador a imprimir a 5,0 cm
 ```
 
 ## 8. Solución de problemas
