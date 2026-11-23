@@ -607,10 +607,9 @@ falle si aparece `cv2`/`tkinter` en esos módulos sería una mejora futura.
 5. **Un solo fotograma para el registro de errores.** `prueba_sesion_registro_errores`
    evalúa un único conjunto de métricas; no simula una secuencia de errores que
    aparecen y desaparecen. El enfriamiento se prueba solo en el caso inmediato.
-6. **`pruebas/` no se versiona.** Por decisión del proyecto, la carpeta de
-   pruebas permanece sin seguimiento en Git, así que este documento tampoco se
-   sube al repositorio. Es la referencia escrita que acompaña a
-   `test_criterios.py` y se entrega junto con él.
+6. Versionado de las pruebas: La carpeta pruebas/ se versiona junto con el resto 
+   del código para garantizar la trazabilidad de los criterios de aceptación. 
+   Las pruebas se ejecutan sin cámara y sin GPU.
 
 ---
 
